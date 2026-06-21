@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskMail — Reminder to My Email</title>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0c0e14;
+    --card: #13151f;
+    --card2: #1a1d2a;
+    --border: #252838;
+    --accent: #5b6af5;
+    --accent-soft: rgba(91,106,245,0.15);
+    --accent-light: #8b97ff;
+    --text: #dde1f0;
+    --muted: #6b7196;
+    --success: #3ecf8e;
+    --danger: #f16b6b;
+    --warn: #f5a623;
+    --high: #f16b6b;
+    --med: #f5a623;
+    --low: #5b9af5;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ── SETUP BANNER ── */
+  #setupBanner {
+    background: linear-gradient(90deg, rgba(91,106,245,0.2), rgba(139,151,255,0.1));
+    border-bottom: 1px solid var(--accent);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+  }
+  #setupBanner strong { color: var(--accent-light); }
+  #setupBanner a { color: var(--accent-light); }
+  .setup-dismiss {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 18px;
+  }
+
+  header {
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+  .logo span { color: var(--accent-light); }
+  .subtitle { font-size: 12px; color: var(--muted); margin-left: auto; }
+
+  .app {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 28px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* ── CONFIG CARD ── */
+  .config-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+  }
+  .config-card h2 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  .config-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+  }
+
+  .field label {
+    display: block;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 5px;
+    font-weight: 500;
+  }
+  .field input, .field select {
+    width: 100%;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .field select option { background: var(--card2); }
+  .field.full { grid-column: 1 / -1; }
+
+  /* ── ADD TASK ── */
+  .add-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+  }
+  .add-card h2 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .add-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .add-row input[type=text] {
+    flex: 1;
+    min-width: 180px;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .add-row input[type=text]:focus { border-color: var(--accent); }
+  .add-row select {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+  }
+  .add-row input[type=date] {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+    color-scheme: dark;
+  }
+
+  .btn-add {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 18px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-add:hover { background: #6e7dff; transform: translateY(-1px); }
+
+  /* ── TASK LIST ── */
+  .task-section { display: flex; flex-direction: column; gap: 10px; }
+
+  .task-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .task-header h2 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+  }
+  .task-count {
+    background: var(--accent-soft);
+    color: var(--accent-light);
+    border-radius: 20px;
+    padding: 2px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .task-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    padding: 13px 15px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: border-color 0.15s;
+  }
+  .task-item:hover { border-color: #353a54; }
+  .task-item.done { opacity: 0.45; }
+  .task-item.done .task-name { text-decoration: line-through; }
+
+  .chk {
+    width: 17px; height: 17px;
+    border-radius: 5px;
+    border: 2px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    appearance: none;
+    flex-shrink: 0;
+    position: relative;
+    transition: all 0.15s;
+  }
+  .chk:checked { background: var(--accent); border-color: var(--accent); }
+  .chk:checked::after {
+    content: '✓'; position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    color: #fff; font-size: 10px;
+  }
+
+  .task-info { flex: 1; min-width: 0; }
+  .task-name { font-size: 14px; font-weight: 500; }
+  .task-badges { display: flex; gap: 6px; margin-top: 5px; flex-wrap: wrap; align-items: center; }
+
+  .badge {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.3px;
+  }
+  .b-high { background: rgba(241,107,107,0.15); color: var(--high); }
+  .b-med  { background: rgba(245,166,35,0.15); color: var(--med); }
+  .b-low  { background: rgba(91,154,245,0.15); color: var(--low); }
+  .b-due  { background: transparent; color: var(--muted); font-size: 10px; }
+  .b-due.over { color: var(--danger); }
+
+  .del-btn {
+    background: none; border: none;
+    color: var(--muted); font-size: 17px;
+    cursor: pointer; border-radius: 5px;
+    padding: 2px 5px; flex-shrink: 0;
+    transition: color 0.15s;
+  }
+  .del-btn:hover { color: var(--danger); }
+
+  .empty {
+    text-align: center; padding: 32px;
+    color: var(--muted); font-size: 13px;
+    border: 1px dashed var(--border);
+    border-radius: 11px;
+  }
+
+  /* ── SEND PANEL ── */
+  .send-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .send-card h2 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+  }
+
+  .preview-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 14px 16px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    line-height: 1.7;
+    color: var(--text);
+    white-space: pre-wrap;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+
+  .send-actions { display: flex; gap: 10px; align-items: center; }
+
+  .btn-send {
+    background: linear-gradient(135deg, var(--accent), var(--accent-light));
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 28px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.2px;
+  }
+  .btn-send:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(91,106,245,0.4); }
+  .btn-send:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  .btn-preview {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 10px;
+    padding: 11px 18px;
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-preview:hover { border-color: var(--accent); color: var(--accent-light); }
+
+  .status-msg {
+    font-size: 12px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    display: none;
+  }
+  .status-msg.show { display: block; }
+  .status-msg.success { background: rgba(62,207,142,0.12); color: var(--success); border: 1px solid rgba(62,207,142,0.25); }
+  .status-msg.error   { background: rgba(241,107,107,0.12); color: var(--danger); border: 1px solid rgba(241,107,107,0.25); }
+  .status-msg.info    { background: var(--accent-soft); color: var(--accent-light); border: 1px solid rgba(91,106,245,0.3); }
+
+  @media (max-width: 600px) {
+    .config-grid { grid-template-columns: 1fr; }
+    .add-row { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SETUP BANNER -->
+<div id="setupBanner">
+  ⚠️ <strong>One-time setup needed:</strong>
+  Taskları real email ilə göndərmək üçün
+  <a href="https://www.emailjs.com" target="_blank">emailjs.com</a>-da pulsuz qeydiyyat ol →
+  Service ID + Template ID + Public Key-i aşağıda daxil et.
+  <button class="setup-dismiss" onclick="document.getElementById('setupBanner').style.display='none'">×</button>
+</div>
+
+<header>
+  <div class="logo">Task<span>Mail</span></div>
+  <div class="subtitle">Taskları unut — email sənə xatırladacaq</div>
+</header>
+
+<div class="app">
+
+  <!-- CONFIG -->
+  <div class="config-card">
+    <h2>⚙️ Email Konfiqurasiya</h2>
+    <div class="config-grid">
+      <div class="field">
+        <label>EmailJS Service ID</label>
+        <input type="text" id="cfgService" placeholder="service_xxxxxxx">
+      </div>
+      <div class="field">
+        <label>EmailJS Template ID</label>
+        <input type="text" id="cfgTemplate" placeholder="template_xxxxxxx">
+      </div>
+      <div class="field">
+        <label>EmailJS Public Key</label>
+        <input type="text" id="cfgPubkey" placeholder="your_public_key">
+      </div>
+      <div class="field full">
+        <label>Sənin Email Ünvanın (göndəriləcək yer)</label>
+        <input type="text" id="cfgEmail" placeholder="elgun@example.com">
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD TASK -->
+  <div class="add-card">
+    <h2>➕ Task Əlavə Et</h2>
+    <div class="add-row">
+      <input type="text" id="tTitle" placeholder="Task adı…" onkeydown="if(event.key==='Enter')addTask()">
+      <select id="tPriority">
+        <option value="high">🔴 Yüksək</option>
+        <option value="med" selected>🟡 Orta</option>
+        <option value="low">🔵 Aşağı</option>
+      </select>
+      <input type="date" id="tDue">
+      <button class="btn-add" onclick="addTask()">+ Əlavə et</button>
+    </div>
+  </div>
+
+  <!-- TASK LIST -->
+  <div class="task-section">
+    <div class="task-header">
+      <h2>📋 Task Siyahısı</h2>
+      <span class="task-count" id="taskCount">0 task</span>
+    </div>
+    <div id="taskList"></div>
+  </div>
+
+  <!-- SEND PANEL -->
+  <div class="send-card">
+    <h2>📨 Email Göndər</h2>
+    <div class="preview-box" id="previewBox">
+      Task əlavə et, sonra "Önizləmə" düyməsinə bas…
+    </div>
+    <div id="statusMsg" class="status-msg"></div>
+    <div class="send-actions">
+      <button class="btn-preview" onclick="buildPreview()">👁 Önizləmə</button>
+      <button class="btn-send" id="sendBtn" onclick="sendEmail()">📬 Mailə Göndər</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ── EMAILJS INIT ──
+  // Public key-i burada da yaza bilərsən (istəsən):
+  // emailjs.init("YOUR_PUBLIC_KEY");
+
+  let tasks = JSON.parse(localStorage.getItem('tm_tasks') || '[]');
+
+  // Default nümunə tasklar
+  if (!tasks.length) {
+    tasks = [
+      { id: 1, title: 'Aylıq HR hesabatını hazırla', priority: 'high', due: tomorrow(), done: false },
+      { id: 2, title: 'Azeriqaz struktur sxemini yenilə', priority: 'med', due: '', done: false },
+      { id: 3, title: 'Portfolio: TSMC + AMD mövqelərini yoxla', priority: 'low', due: '', done: false },
+    ];
+    save();
+  }
+
+  // Load saved config
+  ['cfgService','cfgTemplate','cfgPubkey','cfgEmail'].forEach(id => {
+    const val = localStorage.getItem('tm_'+id);
+    if (val) document.getElementById(id).value = val;
+  });
+  ['cfgService','cfgTemplate','cfgPubkey','cfgEmail'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => {
+      localStorage.setItem('tm_'+id, document.getElementById(id).value);
+    });
+  });
+
+  function tomorrow() {
+    const d = new Date(); d.setDate(d.getDate()+1);
+    return d.toISOString().split('T')[0];
+  }
+
+  function save() {
+    localStorage.setItem('tm_tasks', JSON.stringify(tasks));
+    render();
+  }
+
+  function addTask() {
+    const title = document.getElementById('tTitle').value.trim();
+    if (!title) return;
+    tasks.unshift({
+      id: Date.now(),
+      title,
+      priority: document.getElementById('tPriority').value,
+      due: document.getElementById('tDue').value,
+      done: false
+    });
+    document.getElementById('tTitle').value = '';
+    document.getElementById('tDue').value = '';
+    save();
+  }
+
+  function toggleTask(id) {
+    const t = tasks.find(t=>t.id===id);
+    if (t) { t.done = !t.done; save(); }
+  }
+
+  function deleteTask(id) {
+    tasks = tasks.filter(t=>t.id!==id);
+    save();
+  }
+
+  function isOverdue(t) {
+    return t.due && !t.done && new Date(t.due) < new Date(new Date().toDateString());
+  }
+
+  function render() {
+    const active = tasks.filter(t=>!t.done);
+    document.getElementById('taskCount').textContent = `${active.length} aktiv`;
+
+    const list = document.getElementById('taskList');
+    if (!tasks.length) {
+      list.innerHTML = '<div class="empty">Hələ task yoxdur. Yuxarıdan əlavə et ↑</div>';
+      return;
+    }
+
+    list.innerHTML = tasks.map(t => {
+      const over = isOverdue(t);
+      const priBadge = `<span class="badge b-${t.priority}">${{high:'YÜKSƏKf',med:'ORTA',low:'AŞAĞI'}[t.priority]}</span>`;
+      const dueBadge = t.due ? `<span class="badge b-due${over?' over':''}">${over?'⚠️ ':'📅 '}${t.due}</span>` : '';
+      return `<div class="task-item${t.done?' done':''}">
+        <input type="checkbox" class="chk" ${t.done?'checked':''} onchange="toggleTask(${t.id})">
+        <div class="task-info">
+          <div class="task-name">${t.title}</div>
+          <div class="task-badges">${priBadge}${dueBadge}</div>
+        </div>
+        <button class="del-btn" onclick="deleteTask(${t.id})">×</button>
+      </div>`;
+    }).join('');
+  }
+
+  function buildPreview() {
+    const active = tasks.filter(t=>!t.done);
+    const done   = tasks.filter(t=>t.done);
+    const overdue = tasks.filter(t=>isOverdue(t));
+    const today = new Date().toLocaleDateString('az-AZ');
+
+    let body = `📋 TASK XÜLASƏSI — ${today}\n`;
+    body += `${'─'.repeat(40)}\n\n`;
+
+    if (overdue.length) {
+      body += `⚠️  VAXTI KEÇMİŞ (${overdue.length})\n`;
+      overdue.forEach(t => { body += `  • ${t.title} [${t.due}]\n`; });
+      body += '\n';
+    }
+
+    if (active.length) {
+      body += `🔴 AKTİV TASKLAR (${active.length})\n`;
+      const byPri = {high: active.filter(t=>t.priority==='high'), med: active.filter(t=>t.priority==='med'), low: active.filter(t=>t.priority==='low')};
+      ['high','med','low'].forEach(p => {
+        if (!byPri[p].length) return;
+        body += `\n  ${{'high':'🔴 Yüksək','med':'🟡 Orta','low':'🔵 Aşağı'}[p]}\n`;
+        byPri[p].forEach(t => {
+          body += `    • ${t.title}${t.due?' → '+t.due:''}\n`;
+        });
+      });
+      body += '\n';
+    }
+
+    if (done.length) {
+      body += `✅ TAMAMLANANLAR (${done.length})\n`;
+      done.forEach(t => { body += `  • ${t.title}\n`; });
+    }
+
+    body += `\n${'─'.repeat(40)}\nTaskMail tərəfindən göndərildi.`;
+
+    document.getElementById('previewBox').textContent = body;
+    return body;
+  }
+
+  async function sendEmail() {
+    const service  = document.getElementById('cfgService').value.trim();
+    const template = document.getElementById('cfgTemplate').value.trim();
+    const pubkey   = document.getElementById('cfgPubkey').value.trim();
+    const toEmail  = document.getElementById('cfgEmail').value.trim();
+
+    if (!service || !template || !pubkey || !toEmail) {
+      showStatus('error', '⚠️ Zəhmət olmasa bütün konfiqurasiya xanalarını doldurun.');
+      return;
+    }
+
+    const body = buildPreview();
+    const active = tasks.filter(t=>!t.done).length;
+    const overdue = tasks.filter(t=>isOverdue(t)).length;
+    const subject = overdue
+      ? `⚠️ ${overdue} vaxtı keçmiş task — ${new Date().toLocaleDateString('az-AZ')}`
+      : `📋 ${active} aktiv task — ${new Date().toLocaleDateString('az-AZ')}`;
+
+    showStatus('info', '📤 Göndərilir…');
+    document.getElementById('sendBtn').disabled = true;
+
+    try {
+      emailjs.init(pubkey);
+      await emailjs.send(service, template, {
+        to_email: toEmail,
+        subject: subject,
+        message: body
+      });
+      showStatus('success', '✅ Email uğurla göndərildi! Mailboxunu yoxla.');
+    } catch(err) {
+      showStatus('error', `❌ Xəta: ${err?.text || JSON.stringify(err)}. EmailJS konfiqurasiyanı yoxla.`);
+    }
+    document.getElementById('sendBtn').disabled = false;
+  }
+
+  function showStatus(type, msg) {
+    const el = document.getElementById('statusMsg');
+    el.textContent = msg;
+    el.className = `status-msg show ${type}`;
+    setTimeout(() => el.classList.remove('show'), 6000);
+  }
+
+  render();
+</script>
+</body>
+</html>
